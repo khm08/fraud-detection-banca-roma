@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banca Roma Digitale - Fraud Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg-dark: #0a0f1e;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2236;
+  --border: #1e293b;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-emerald: #10b981;
+  --accent-red: #ef4444;
+  --accent-amber: #f59e0b;
+  --accent-purple: #8b5cf6;
+  --accent-rose: #f43f5e;
+  --accent-orange: #f97316;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --gold: #d4a853;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    radial-gradient(ellipse at 20% 0%, rgba(59,130,246,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(139,92,246,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(6,182,212,0.03) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dashboard { position: relative; z-index: 1; max-width: 1600px; margin: 0 auto; padding: 20px; }
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #0c1629 0%, #162044 50%, #1a1040 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan), var(--accent-purple), var(--gold));
+}
+
+.logo-section { display: flex; align-items: center; gap: 16px; }
+
+.logo {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, var(--gold), #b8860b);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700; font-size: 22px; color: #0a0f1e;
+  box-shadow: 0 0 20px rgba(212,168,83,0.3);
+}
+
+.bank-name {
+  font-size: 22px; font-weight: 700;
+  background: linear-gradient(135deg, var(--gold), #e8c878);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: 0.5px;
+}
+
+.bank-subtitle { font-size: 12px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+
+.header-right { text-align: right; }
+.header-title { font-size: 18px; font-weight: 600; color: var(--text-primary); }
+.header-date { font-size: 13px; color: var(--text-muted); margin-top: 4px; font-family: 'Space Mono', monospace; }
+.header-author { font-size: 12px; color: var(--accent-cyan); margin-top: 2px; }
+
+/* KPI Row */
+.kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
+
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.kpi-card:hover { transform: translateY(-2px); border-color: var(--accent-blue); }
+
+.kpi-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+}
+
+.kpi-card:nth-child(1)::before { background: var(--accent-blue); }
+.kpi-card:nth-child(2)::before { background: var(--accent-red); }
+.kpi-card:nth-child(3)::before { background: var(--accent-amber); }
+.kpi-card:nth-child(4)::before { background: var(--accent-rose); }
+.kpi-card:nth-child(5)::before { background: var(--accent-emerald); }
+.kpi-card:nth-child(6)::before { background: var(--accent-purple); }
+
+.kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 8px; }
+.kpi-value { font-size: 28px; font-weight: 700; font-family: 'Space Mono', monospace; }
+.kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Chart Grid */
+.chart-grid { display: grid; gap: 16px; margin-bottom: 20px; }
+.grid-2 { grid-template-columns: 1fr 1fr; }
+.grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.grid-2-1 { grid-template-columns: 2fr 1fr; }
+.grid-1-2 { grid-template-columns: 1fr 2fr; }
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+}
+
+.chart-title {
+  font-size: 14px; font-weight: 600; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.chart-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.chart-subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
+
+canvas { max-height: 280px; }
+
+/* Model Table */
+.model-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.model-table th {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); padding: 10px 12px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.model-table td {
+  padding: 12px; font-size: 13px; border-bottom: 1px solid rgba(30,41,59,0.5);
+  font-family: 'Space Mono', monospace;
+}
+.model-table tr:hover td { background: rgba(59,130,246,0.05); }
+.model-table .model-name { font-family: 'DM Sans', sans-serif; font-weight: 600; }
+
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 600;
+}
+.badge-best { background: rgba(16,185,129,0.15); color: var(--accent-emerald); }
+.badge-good { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+
+/* Fraud type bars */
+.fraud-bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.fraud-bar-label { font-size: 12px; color: var(--text-secondary); min-width: 140px; text-transform: capitalize; }
+.fraud-bar-track { flex: 1; height: 24px; background: rgba(255,255,255,0.03); border-radius: 6px; overflow: hidden; position: relative; }
+.fraud-bar-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 600; font-family: 'Space Mono', monospace; transition: width 1s ease; }
+.fraud-bar-amount { font-size: 11px; color: var(--text-muted); min-width: 80px; text-align: right; font-family: 'Space Mono', monospace; }
+
+/* Footer */
+.footer {
+  text-align: center; padding: 16px; margin-top: 20px;
+  font-size: 11px; color: var(--text-muted); letter-spacing: 1px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 1200px) { .kpi-row { grid-template-columns: repeat(3, 1fr); } .grid-2, .grid-3, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="dashboard">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-section">
+      <div class="logo">BRD</div>
+      <div>
+        <div class="bank-name">Banca Roma Digitale</div>
+        <div class="bank-subtitle">Fraud Intelligence Division</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-title">Fraud Detection Analytics Dashboard</div>
+      <div class="header-date">Reporting Period: Jan 2024 - Dec 2025</div>
+      <div class="header-author">Analyst: Kareem Makki</div>
+    </div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Transactions</div>
+      <div class="kpi-value" style="color: var(--accent-blue);">50,000</div>
+      <div class="kpi-sub">24-month period</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Fraud Detected</div>
+      <div class="kpi-value" style="color: var(--accent-red);">3,767</div>
+      <div class="kpi-sub">7.53% fraud rate</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Exposure</div>
+      <div class="kpi-value" style="color: var(--accent-amber);">&euro;10.8M</div>
+      <div class="kpi-sub">Potential losses</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Avg Fraud Amount</div>
+      <div class="kpi-value" style="color: var(--accent-rose);">&euro;2,860</div>
+      <div class="kpi-sub">Per fraudulent txn</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Model Detection</div>
+      <div class="kpi-value" style="color: var(--accent-emerald);">94.3%</div>
+      <div class="kpi-sub">Recall rate</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Best AUC-ROC</div>
+      <div class="kpi-value" style="color: var(--accent-purple);">0.999</div>
+      <div class="kpi-sub">Gradient Boosting</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Monthly Trend + Fraud by Type -->
+  <div class="chart-grid grid-2-1">
+    <div class="chart-card">
+      <div class="chart-title"><div class="dot" style="background:var(--accent-cyan)"></div>Monthly Fraud Trend</div>
+      <div class="chart-subtitle">Fraud count and rate over 24 months</div>
+      <canvas id="monthlyChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="dot" style="background:var(--accent-rose)"></div>Fraud by Type</div>
+      <div class="chart-subtitle">Transaction count by scheme</div>
+      <canvas id="fraudTypeChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 2: Financial Exposure Bars -->
+  <div class="chart-grid" style="grid-template-columns: 1fr;">
+    <div class="chart-card">
+      <div class="chart-title"><div class="dot" style="background:var(--accent-amber)"></div>Financial Exposure by Fraud Type (EUR)</div>
+      <div class="chart-subtitle">Total potential losses per scheme</div>
+      <div id="exposureBars" style="margin-top: 8px;"></div>
+    </div>
+  </div>
+
+  <!-- Row 3: Channel + Hourly + CP/CNP -->
+  <div class="chart-grid grid-3">
+    <div class="chart-card">
+      <div class="chart-title"><div class="dot" style="background:var(--accent-blue)"></div>Fraud Rate by Channel</div>
+      <div class="chart-subtitle">Percentage of fraudulent transactions</div>
+      <canvas id="channelChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="dot" style="background:var(--accent-purple)"></div>Hourly Fraud Pattern</div>
+      <div class="chart-subtitle">Fraud rate by hour of day</div>
+      <canvas id="hourlyChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="dot" style="background:var(--accent-emerald)"></div>Card Present vs Not Present</div>
+      <div class="chart-subtitle">Fraud distribution by card presence</div>
+      <canvas id="cpCnpChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 4: Model Comparison + Country -->
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-title"><div class="dot" style="background:var(--accent-emerald)"></div>ML Model Performance Comparison</div>
+      <div class="chart-subtitle">Supervised + Unsupervised models evaluated</div>
+      <table class="model-table">
+        <thead>
+          <tr><th>Model</th><th>AUC-ROC</th><th>Precision</th><th>Recall</th><th>F1</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="model-name">Gradient Boosting</td><td>0.9991</td><td>0.979</td><td>0.943</td><td>0.961</td><td><span class="badge badge-best">BEST</span></td></tr>
+          <tr><td class="model-name">Random Forest</td><td>0.9985</td><td>0.973</td><td>0.921</td><td>0.947</td><td><span class="badge badge-good">STRONG</span></td></tr>
+          <tr><td class="model-name">Decision Tree</td><td>0.9788</td><td>0.765</td><td>0.954</td><td>0.849</td><td><span class="badge badge-good">GOOD</span></td></tr>
+          <tr><td class="model-name">Logistic Regression</td><td>0.9661</td><td>0.534</td><td>0.878</td><td>0.664</td><td></td></tr>
+          <tr><td class="model-name">Isolation Forest</td><td>0.730</td><td>0.464</td><td>0.462</td><td>0.463</td><td></td></tr>
+          <tr><td class="model-name">Hybrid (ML+Rules)</td><td>0.9969</td><td>0.960</td><td>0.910</td><td>0.940</td><td><span class="badge badge-good">PROD</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="dot" style="background:var(--accent-orange)"></div>Fraud by Country of Origin</div>
+      <div class="chart-subtitle">Geographic distribution of fraudulent transactions</div>
+      <canvas id="countryChart"></canvas>
+    </div>
+  </div>
+
+  <div class="footer">
+    BANCA ROMA DIGITALE &bull; FRAUD INTELLIGENCE DASHBOARD &bull; CONFIDENTIAL &bull; PREPARED BY KAREEM MAKKI &bull; 2025
+  </div>
+</div>
+
+<script>
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: '#94a3b8', font: { family: 'DM Sans', size: 11 } } }
+  },
+  scales: {
+    x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(30,41,59,0.5)' } },
+    y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(30,41,59,0.5)' } }
+  }
+};
+
+// Monthly Trend
+const months = ['Jan 24','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+                'Jan 25','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fraudCounts = [174,143,169,164,152,173,162,158,137,160,152,157,137,149,170,135,155,158,173,159,143,150,128,138];
+const fraudRates = [8.23,6.91,8.01,8.06,7.33,8.25,7.58,7.4,6.82,7.41,7.37,7.54,6.67,7.57,7.79,6.73,7.49,7.28,8.07,7.39,6.85,7.25,6.22,6.72];
+
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      { label: 'Fraud Count', data: fraudCounts, backgroundColor: 'rgba(6,182,212,0.6)', borderRadius: 4, yAxisID: 'y', order: 2 },
+      { label: 'Fraud Rate %', data: fraudRates, type: 'line', borderColor: '#f43f5e', backgroundColor: 'rgba(244,63,94,0.1)', fill: true, tension: 0.4, pointRadius: 2, yAxisID: 'y1', order: 1 }
+    ]
+  },
+  options: {
+    ...chartDefaults,
+    plugins: { ...chartDefaults.plugins },
+    scales: {
+      x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, maxRotation: 45 } },
+      y: { ...chartDefaults.scales.y, position: 'left', title: { display: true, text: 'Count', color: '#64748b' } },
+      y1: { ...chartDefaults.scales.y, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Rate %', color: '#64748b' } }
+    }
+  }
+});
+
+// Fraud Type Doughnut
+new Chart(document.getElementById('fraudTypeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Account Takeover', 'Card Present', 'Phishing/ATO', 'Card Not Present', 'First Party', 'Money Mule', 'Synthetic ID'],
+    datasets: [{
+      data: [1013, 864, 856, 615, 408, 8, 3],
+      backgroundColor: ['#ef4444','#3b82f6','#8b5cf6','#f97316','#f59e0b','#06b6d4','#10b981'],
+      borderWidth: 0, hoverOffset: 8
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, cutout: '55%',
+    plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10 }, padding: 8, boxWidth: 12 } } }
+  }
+});
+
+// Exposure Bars
+const exposureData = [
+  { type: 'Account Takeover', amount: 5399153, color: '#ef4444' },
+  { type: 'Phishing / ATO', amount: 2130041, color: '#8b5cf6' },
+  { type: 'Card Not Present', amount: 1555029, color: '#f97316' },
+  { type: 'Card Present', amount: 885386, color: '#3b82f6' },
+  { type: 'First Party', amount: 701632, color: '#f59e0b' },
+  { type: 'Money Mule', amount: 85784, color: '#06b6d4' },
+  { type: 'Synthetic Identity', amount: 16337, color: '#10b981' },
+];
+const maxExposure = exposureData[0].amount;
+const barsDiv = document.getElementById('exposureBars');
+exposureData.forEach(d => {
+  const pct = (d.amount / maxExposure * 100).toFixed(0);
+  barsDiv.innerHTML += `<div class="fraud-bar-row">
+    <div class="fraud-bar-label">${d.type}</div>
+    <div class="fraud-bar-track"><div class="fraud-bar-fill" style="width:${pct}%;background:${d.color};">${pct > 15 ? '€' + (d.amount/1000000).toFixed(1) + 'M' : ''}</div></div>
+    <div class="fraud-bar-amount">€${d.amount.toLocaleString()}</div>
+  </div>`;
+});
+
+// Channel Chart
+new Chart(document.getElementById('channelChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Online', 'Branch', 'POS', 'ATM', 'Mobile App'],
+    datasets: [{ data: [9.05, 7.09, 6.95, 6.87, 6.63],
+      backgroundColor: ['#ef4444','#f97316','#f59e0b','#3b82f6','#8b5cf6'],
+      borderRadius: 6 }]
+  },
+  options: { ...chartDefaults, indexAxis: 'y', plugins: { ...chartDefaults.plugins, legend: { display: false } } }
+});
+
+// Hourly Chart
+const hours = Array.from({length:24}, (_,i) => i);
+const hourlyRates = [7.8,7.2,8.1,7.9,8.3,7.5,7.1,6.8,7.2,7.5,7.3,7.6,7.8,7.4,7.2,7.0,7.3,7.5,7.8,8.0,7.9,8.2,8.5,8.0];
+
+new Chart(document.getElementById('hourlyChart'), {
+  type: 'line',
+  data: {
+    labels: hours.map(h => h + ':00'),
+    datasets: [{
+      data: hourlyRates,
+      borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)',
+      fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#8b5cf6'
+    }]
+  },
+  options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } },
+    scales: { ...chartDefaults.scales, x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, maxTicksLimit: 12 } } } }
+});
+
+// CP vs CNP
+new Chart(document.getElementById('cpCnpChart'), {
+  type: 'pie',
+  data: {
+    labels: ['Card Not Present (CNP)', 'Card Present (CP)'],
+    datasets: [{ data: [2892, 875], backgroundColor: ['#ef4444','#3b82f6'], borderWidth: 0, hoverOffset: 6 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, padding: 12 } } } }
+});
+
+// Country Chart
+new Chart(document.getElementById('countryChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Italy','Romania','Nigeria','Russia','China','Brazil','Spain','France','Germany','UK'],
+    datasets: [{ data: [2100, 380, 350, 320, 280, 180, 50, 40, 35, 32],
+      backgroundColor: (ctx) => ctx.index === 0 ? '#10b981' : '#ef4444',
+      borderRadius: 4 }]
+  },
+  options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } }
+});
+</script>
+</body>
+</html>
